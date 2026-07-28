@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using Agents;
+using BepInEx;
+using BepInEx.Configuration;
 using Enemies;
 using GameData;
 using Gear;
@@ -28,6 +30,8 @@ namespace Zombified_Initiative
         public static bool _debug = true;
         public static bool _menuadded = false;
 
+        /* Input Config */
+        //public static ConfigEntry<KeyCode> firstKey;
 
         public static void ReceiveZINetInfo(ulong sender, ZombifiedInitiative.ZINetInfo netInfo)
         {
@@ -222,30 +226,30 @@ namespace Zombified_Initiative
             /// bot under aim, stop? no aim? all stop?
             //  PreventManualActions();
 
-            if (Input.GetKeyDown(KeyCode.J) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKeyDown(KeyCode.Y) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
             {
                 if (SNet.IsMaster) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedpickups = !bt.Value.GetComponent<ZombieComp>().allowedpickups;
                 if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(2, 8, 0, 0, 0));
                 Print("Automatic resource pickups toggled for all bots");
             }
 
-            if (Input.GetKeyDown(KeyCode.K) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKeyDown(KeyCode.U) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
             {
                 if (SNet.IsMaster) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedshare = !bt.Value.GetComponent<ZombieComp>().allowedshare;
                 if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(1, 8, 0, 0, 0));
                 Print("Automatic resource uses toggled for all bots");
             }
 
-            if (Input.GetKey(KeyCode.Alpha8) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKey(KeyCode.V) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
                 SendBot("Dauda");
 
-            if (Input.GetKey(KeyCode.Alpha9) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKey(KeyCode.Q) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
                 SendBot("Hackett");
 
-            if (Input.GetKey(KeyCode.Alpha0) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKey(KeyCode.X) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
                 SendBot("Bishop");
 
-            if (Input.GetKey(KeyCode.F6) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (Input.GetKey(KeyCode.Alpha3) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
                 SendBot("Woods");
 
             void SendBot(String bot)
@@ -262,15 +266,21 @@ namespace Zombified_Initiative
                     }
                 }
 
-                if (Input.GetKeyDown(KeyCode.U) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                //if (Input.GetKeyDown(KeyCode.X) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                if (Input.GetMouseButtonDown(4) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
                 {
+                    Print("Got MouseButtonDown 4 (Fwd");
                     var item = GetItemUnderPlayerAim();
                     if (item != null)
                         SendBotToPickupItem(bot, item);
                 }
 
-                if (Input.GetKeyDown(KeyCode.I) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                //if (Input.GetKeyDown(KeyCode.V) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                if (Input.GetMouseButtonDown(3) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                {
                     SendBotToShareResourcePack(bot, GetHumanUnderPlayerAim());
+                    Print("Got MouseButtonDown 3 (Back)");
+                }
             }
         }
 
