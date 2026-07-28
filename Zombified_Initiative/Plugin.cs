@@ -10,7 +10,7 @@ using LevelGeneration;
 namespace Zombified_Initiative;
 
 [BepInDependency("dev.gtfomodding.gtfo-api")]
-[BepInPlugin("com.hirnukuono.zombified_initiative", "Zombified Initiative", "0.9.5")]
+[BepInPlugin("com.hirnukuono.zombified_initiative", "Zombified Initiative", "0.9.6")]
 public class ZombifiedInitiative : BasePlugin
 {
     public static Dictionary<String, PlayerAIBot> BotTable = new();

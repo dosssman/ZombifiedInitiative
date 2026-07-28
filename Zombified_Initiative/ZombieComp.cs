@@ -16,10 +16,12 @@ namespace Zombified_Initiative
         TextDataBlock textattack;
         TextDataBlock textpickup;
         TextDataBlock textsupply;
+        TextDataBlock textsentry;
         public CommunicationNode mymenu;
 
         public bool allowedpickups = true;
         public bool allowedshare = true;
+        public bool allowedmove = true;
         public bool started = false;
         List<PlayerBotActionBase> actionsToRemove = new();
         PlayerAgent myself = null;
@@ -27,6 +29,8 @@ namespace Zombified_Initiative
 
         public PlayerBotActionBase pickupaction;
         public PlayerBotActionBase shareaction;
+        public PlayerBotActionBase followaction;
+        public PlayerBotActionBase travelaction;
 
 
         public void Initialize()
@@ -60,6 +64,9 @@ namespace Zombified_Initiative
                 textsupply = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = this.myself.PlayerName + "supply", English = this.myself.PlayerName + " supply resource (aimed or me)" });
                 localizationService.m_texts.Add(textsupply.persistentID, textsupply.GetText(localizationService.CurrentLanguage));
 
+                textsentry = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = this.myself.PlayerName + "sentry", English = this.myself.PlayerName + " toggle sentry mode" });
+                localizationService.m_texts.Add(textsentry.persistentID, textsentry.GetText(localizationService.CurrentLanguage));
+
                 this.mymenu = new(this.textmenuroot.persistentID, CommunicationNode.ScriptType.None);
                 mymenu.IsLastNode = false;
                 mymenu.m_ChildNodes.Add(new CommunicationNode(textallowedpickups.persistentID, CommunicationNode.ScriptType.None));
@@ -68,6 +75,7 @@ namespace Zombified_Initiative
                 mymenu.m_ChildNodes.Add(new CommunicationNode(textattack.persistentID, CommunicationNode.ScriptType.None));
                 mymenu.m_ChildNodes.Add(new CommunicationNode(textpickup.persistentID, CommunicationNode.ScriptType.None));
                 mymenu.m_ChildNodes.Add(new CommunicationNode(textsupply.persistentID, CommunicationNode.ScriptType.None));
+                mymenu.m_ChildNodes.Add(new CommunicationNode(textsentry.persistentID, CommunicationNode.ScriptType.None));
 
                 mymenu.m_ChildNodes[0].DialogID = 314;
                 mymenu.m_ChildNodes[1].DialogID = 314;
@@ -75,6 +83,8 @@ namespace Zombified_Initiative
                 mymenu.m_ChildNodes[3].DialogID = 314;
                 mymenu.m_ChildNodes[4].DialogID = 314;
                 mymenu.m_ChildNodes[5].DialogID = 314;
+                mymenu.m_ChildNodes[6].DialogID = 314;
+
             }
             catch { }
             if (ZombifiedInitiative.BotTable.Count == 0) ZombifiedInitiative.BotTable.Add(myself.PlayerName, myAI);
@@ -123,6 +133,13 @@ namespace Zombified_Initiative
             actionsToRemove.Clear();
             foreach (var action in this.myAI.Actions)
             {
+                // sentry?
+                if (action.GetIl2CppType().Name == "PlayerBotActionFollow") followaction = action;
+                if (action.GetIl2CppType().Name == "PlayerBotActionTravel") travelaction = action;
+
+                if (!allowedmove && action.GetIl2CppType().Name == "PlayerBotActionFollow") action.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.Queued;
+                if (!allowedmove && action.GetIl2CppType().Name == "PlayerBotActionTravel") action.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.Queued;
+
                 // pickups?
                 if (!allowedpickups && action.GetIl2CppType().Name == "PlayerBotActionCollectItem")
                 {

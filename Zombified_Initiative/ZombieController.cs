@@ -190,6 +190,8 @@ namespace Zombified_Initiative
             TextDataBlock zombtext4 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext4", English = "AllBots clear command queue" };
             TextDataBlock zombtext5 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext5", English = "AllBots toggle share permission" };
             TextDataBlock zombtext6 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext6", English = "All Bots" };
+            TextDataBlock zombtext7 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext7", English = "AllBots toggle sentry mode" };
+
 
             TextDataBlock.AddBlock(zombtext1);
             TextDataBlock.AddBlock(zombtext2);
@@ -197,6 +199,7 @@ namespace Zombified_Initiative
             TextDataBlock.AddBlock(zombtext4);
             TextDataBlock.AddBlock(zombtext5);
             TextDataBlock.AddBlock(zombtext6);
+            TextDataBlock.AddBlock(zombtext7);
 
             var localizationService = Text.TextLocalizationService.TryCast<GameDataTextLocalizationService>();
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext1"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext1"), zombtext1.GetText(localizationService.CurrentLanguage));
@@ -205,6 +208,7 @@ namespace Zombified_Initiative
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext4"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext4"), zombtext4.GetText(localizationService.CurrentLanguage));
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext5"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext5"), zombtext5.GetText(localizationService.CurrentLanguage));
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext6"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext6"), zombtext6.GetText(localizationService.CurrentLanguage));
+            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext7"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext7"), zombtext7.GetText(localizationService.CurrentLanguage));
 
         }
 
@@ -292,8 +296,9 @@ namespace Zombified_Initiative
             uint zombtb4 = TextDataBlock.GetBlockID("zombtext4");
             uint zombtb5 = TextDataBlock.GetBlockID("zombtext5");
             uint zombtb6 = TextDataBlock.GetBlockID("zombtext6");
+            uint zombtb7 = TextDataBlock.GetBlockID("zombtext7");
 
-            ZombifiedInitiative.L.LogInfo($"debug {zombtb1} {zombtb2} {zombtb3} {zombtb4} {zombtb5} {zombtb6}");
+            //ZombifiedInitiative.L.LogInfo($"debug {zombtb1} {zombtb2} {zombtb3} {zombtb4} {zombtb5} {zombtb6}");
             CommunicationNode allmenu = new(zombtb6, CommunicationNode.ScriptType.None);
             allmenu.IsLastNode = false;
             allmenu.TextId = zombtb6;
@@ -301,10 +306,12 @@ namespace Zombified_Initiative
             allmenu.m_ChildNodes.Add(new CommunicationNode(zombtb3, CommunicationNode.ScriptType.None));
             allmenu.m_ChildNodes.Add(new CommunicationNode(zombtb4, CommunicationNode.ScriptType.None));
             allmenu.m_ChildNodes.Add(new CommunicationNode(zombtb5, CommunicationNode.ScriptType.None));
+            allmenu.m_ChildNodes.Add(new CommunicationNode(zombtb7, CommunicationNode.ScriptType.None));
             allmenu.m_ChildNodes[0].DialogID = 314;
             allmenu.m_ChildNodes[1].DialogID = 314;
             allmenu.m_ChildNodes[2].DialogID = 314;
             allmenu.m_ChildNodes[3].DialogID = 314;
+            allmenu.m_ChildNodes[4].DialogID = 314;
 
             CommunicationNode zombmenu = new(zombtb1, CommunicationNode.ScriptType.None);
             zombmenu.IsLastNode = false;

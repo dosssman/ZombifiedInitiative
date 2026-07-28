@@ -143,6 +143,28 @@ public class ZombifiedPatches
                 L.LogInfo($"bot " + who + " share resource");
                 ZombieController.SendBotToShareResourcePack(who, ZombieController.GetHumanUnderPlayerAim());
             }
+
+            if (wha.Contains("sentry mode"))
+            {
+                if (who == "AllBots")
+                {
+                    L.LogInfo("all bots sentry mode");
+                    foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                    {
+                        bt.Value.GetComponent<ZombieComp>().allowedmove = !bt.Value.GetComponent<ZombieComp>().allowedmove;
+                        if (bt.Value.GetComponent<ZombieComp>().allowedmove == true) bt.Value.GetComponent<ZombieComp>().followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+                        if (bt.Value.GetComponent<ZombieComp>().allowedmove == true) bt.Value.GetComponent<ZombieComp>().travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+
+                    }
+                }
+                else
+                {
+                    L.LogInfo($"bot " + who + " sentry mode");
+                    BotTable[who].GetComponent<ZombieComp>().allowedmove = !BotTable[who].GetComponent<ZombieComp>().allowedmove;
+                    if (BotTable[who].GetComponent<ZombieComp>().allowedmove == true) BotTable[who].GetComponent<ZombieComp>().followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+                    if (BotTable[who].GetComponent<ZombieComp>().allowedmove == true) BotTable[who].GetComponent<ZombieComp>().travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+                }
+            }
         } // if islastnode
     } // playconfirm
 } // zombifiedpatches

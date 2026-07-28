@@ -4,9 +4,8 @@
 		<!--
 		Use the following property to set your preferred r2modman profile
 		-->
-		<Profile>Vanilliini</Profile>
-
-		<TargetFramework>net6.0-windows</TargetFramework>
+		<Profile>hirnuplugins</Profile>
+		<TargetFramework>net6.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<DebugType>None</DebugType>
