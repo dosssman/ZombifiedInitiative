@@ -11,7 +11,7 @@ using LevelGeneration;
 namespace Zombified_Initiative;
 
 [BepInDependency("dev.gtfomodding.gtfo-api")]
-[BepInPlugin("com.hirnukuono.zombified_initiative", "Zombified Initiative", "0.9.7")]
+[BepInPlugin("com.hirnukuono.zombified_initiative", "Zombified Initiative", "0.9.8")]
 public class ZombifiedInitiative : BasePlugin
 {
     private const string ConfigFileName = "Zombified_Initiative.cfg";
