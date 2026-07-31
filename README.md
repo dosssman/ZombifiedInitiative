@@ -79,8 +79,7 @@ sudo pacman -S dotnet-sdk-6.0
 
 #### Compilation
 
-Run the build from the root of this repository so that `$PWD/BepInEx` resolves to
-the copied dependency directory:
+Run the build from the root of this repository so that `$PWD/BepInEx` resolves to the copied dependency directory:
 
 ```bash
 dotnet build Zombified_Initiative.sln \
