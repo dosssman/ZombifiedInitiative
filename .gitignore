@@ -1,0 +1,71 @@
+# GTFO/BepInEx runtime files and machine-generated game assemblies
+/BepInEx/
+
+# .NET build and publish output
+**/[Bb]in/
+**/[Oo]bj/
+/out/
+/publish/
+
+# Test and coverage output
+TestResults/
+/coverage/
+/coverage.*
+*.coverage
+*.coveragexml
+BenchmarkDotNet.Artifacts/
+*.binlog
+
+# Local NuGet and .NET SDK state
+/.dotnet/
+/.nuget/
+/.local/
+/.templateengine/
+/packages/
+*.nupkg
+*.snupkg
+
+# Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+
+# JetBrains Rider / ReSharper
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code local state (retain shareable project configuration)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/*.code-snippets
+.history/
+
+# Operating-system metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs, crash dumps, and editor temporary files
+*.log
+*.dmp
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
