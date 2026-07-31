@@ -26,6 +26,9 @@ namespace Zombified_Initiative
         public static bool _debug = true;
         public static bool _menuadded = false;
 
+        private static readonly Dictionary<string, TextDataBlock> CustomTextBlocks = new();
+        internal static CommunicationNode? ZombifiedMenu { get; private set; }
+
         private static InputBinding _toggleDebug = null!;
         private static InputBinding _toggleAllPickups = null!;
         private static InputBinding _toggleAllUses = null!;
@@ -303,6 +306,8 @@ namespace Zombified_Initiative
 
         public void OnFactoryBuildDone()
         {
+            ZombifiedInitiative.rootmenusetup = false;
+            ZombifiedMenu = null;
             ZombifiedInitiative.BotTable.Clear();
             foreach (var player in PlayerManager.PlayerAgentsInLevel)
             {
@@ -321,51 +326,61 @@ namespace Zombified_Initiative
             }
 
             ZombifiedInitiative._menu = communicationMenu;
-            if (!_menuadded)
-            {
-                AddZombifiedText();
-                AddZombifiedMenu(communicationMenu);
-                ZombifiedInitiative.rootmenusetup = true;
-                _menuadded = true;
-            }
+            if (!AddZombifiedText() || !AddZombifiedMenu(communicationMenu))
+                return;
+
+            ZombifiedInitiative.rootmenusetup = true;
+            _menuadded = true;
 
         }
 
 
-        public static void AddZombifiedText()
+        public static bool AddZombifiedText()
         {
-            TextDataBlock zombtext1 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext1", English = "Zombified Initiative" };
-            TextDataBlock zombtext2 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext2", English = "AllBots attack my target" };
-            TextDataBlock zombtext3 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext3", English = "AllBots toggle pickup permission" };
-            TextDataBlock zombtext4 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext4", English = "AllBots clear command queue" };
-            TextDataBlock zombtext5 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext5", English = "AllBots toggle share permission" };
-            TextDataBlock zombtext6 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext6", English = "All Bots" };
-            TextDataBlock zombtext7 = new() { internalEnabled = true, SkipLocalization = true, name = "zombtext7", English = "AllBots toggle sentry mode" };
-
-
-            TextDataBlock.AddBlock(zombtext1);
-            TextDataBlock.AddBlock(zombtext2);
-            TextDataBlock.AddBlock(zombtext3);
-            TextDataBlock.AddBlock(zombtext4);
-            TextDataBlock.AddBlock(zombtext5);
-            TextDataBlock.AddBlock(zombtext6);
-            TextDataBlock.AddBlock(zombtext7);
-
             var localizationService = Text.TextLocalizationService.TryCast<GameDataTextLocalizationService>();
             if (localizationService == null)
             {
                 ZombifiedInitiative.L.LogError("Could not access the game-data localization service.");
-                return;
+                return false;
             }
 
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext1"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext1"), zombtext1.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext2"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext2"), zombtext2.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext3"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext3"), zombtext3.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext4"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext4"), zombtext4.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext5"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext5"), zombtext5.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext6"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext6"), zombtext6.GetText(localizationService.CurrentLanguage));
-            if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext7"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext7"), zombtext7.GetText(localizationService.CurrentLanguage));
+            GetOrCreateTextBlock(localizationService, "zombtext1", "Zombified Initiative");
+            GetOrCreateTextBlock(localizationService, "zombtext2", "AllBots attack my target");
+            GetOrCreateTextBlock(localizationService, "zombtext3", "AllBots toggle pickup permission");
+            GetOrCreateTextBlock(localizationService, "zombtext4", "AllBots clear command queue");
+            GetOrCreateTextBlock(localizationService, "zombtext5", "AllBots toggle share permission");
+            GetOrCreateTextBlock(localizationService, "zombtext6", "All Bots");
+            GetOrCreateTextBlock(localizationService, "zombtext7", "AllBots toggle sentry mode");
 
+            return true;
+        }
+
+        internal static TextDataBlock GetOrCreateTextBlock(
+            GameDataTextLocalizationService localizationService,
+            string name,
+            string english)
+        {
+            if (!CustomTextBlocks.TryGetValue(name, out var textBlock))
+            {
+                var blockId = TextDataBlock.GetBlockID(name);
+                textBlock = blockId == 0 ? null : TextDataBlock.GetBlock(blockId);
+                textBlock ??= TextDataBlock.AddBlock(new TextDataBlock
+                {
+                    persistentID = 0,
+                    internalEnabled = true,
+                    SkipLocalization = true,
+                    name = name,
+                    English = english,
+                });
+                CustomTextBlocks[name] = textBlock;
+            }
+
+            if (!localizationService.m_texts.ContainsKey(textBlock.persistentID))
+                localizationService.m_texts.Add(
+                    textBlock.persistentID,
+                    textBlock.GetText(localizationService.CurrentLanguage));
+
+            return textBlock;
         }
 
         public void Initialize()
@@ -443,7 +458,7 @@ namespace Zombified_Initiative
                    FocusStateManager.CurrentState == eFocusState.Dead;
         }
 
-        public static void AddZombifiedMenu(PUI_CommunicationMenu communicationMenu)
+        public static bool AddZombifiedMenu(PUI_CommunicationMenu communicationMenu)
         {
             uint zombtb1 = TextDataBlock.GetBlockID("zombtext1");
             uint zombtb2 = TextDataBlock.GetBlockID("zombtext2");
@@ -453,7 +468,39 @@ namespace Zombified_Initiative
             uint zombtb6 = TextDataBlock.GetBlockID("zombtext6");
             uint zombtb7 = TextDataBlock.GetBlockID("zombtext7");
 
-            //ZombifiedInitiative.L.LogInfo($"debug {zombtb1} {zombtb2} {zombtb3} {zombtb4} {zombtb5} {zombtb6}");
+            var rootNode = communicationMenu.m_menu.CurrentNode;
+            CommunicationNode? whatINeedMenu = null;
+            for (var index = 0; index < rootNode.m_ChildNodes.Count; index++)
+            {
+                var node = rootNode.m_ChildNodes[index];
+                var textBlock = TextDataBlock.GetBlock(node.TextId);
+                if (textBlock != null && string.Equals(
+                        textBlock.English,
+                        "What I Need",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    whatINeedMenu = node;
+                    break;
+                }
+            }
+
+            if (whatINeedMenu == null)
+            {
+                ZombifiedInitiative.L.LogError("Could not find the 'What I Need' communication-menu node.");
+                ZombifiedMenu = null;
+                return false;
+            }
+
+            for (var index = 0; index < whatINeedMenu.m_ChildNodes.Count; index++)
+            {
+                var node = whatINeedMenu.m_ChildNodes[index];
+                if (node.TextId != zombtb1) continue;
+
+                node.IsLastNode = false;
+                ZombifiedMenu = node;
+                return true;
+            }
+
             CommunicationNode allmenu = new(zombtb6, CommunicationNode.ScriptType.None);
             allmenu.IsLastNode = false;
             allmenu.TextId = zombtb6;
@@ -473,7 +520,9 @@ namespace Zombified_Initiative
             zombmenu.TextId = zombtb1;
             zombmenu.m_ChildNodes.Add(allmenu);
 
-            communicationMenu.m_menu.CurrentNode.ChildNodes[5].m_ChildNodes.Add(zombmenu);
+            whatINeedMenu.m_ChildNodes.Add(zombmenu);
+            ZombifiedMenu = zombmenu;
+            return true;
         }
 
         #region Attack monster

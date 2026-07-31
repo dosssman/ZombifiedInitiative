@@ -55,32 +55,27 @@ namespace Zombified_Initiative
             ZombifiedInitiative.L.LogInfo($"initializing zombified comp on {player.PlayerName} slot {player.PlayerSlotIndex}..");
             try
             {
-                var textmenuroot = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "menuroot", English = player.PlayerName });
-                localizationService.m_texts.Add(textmenuroot.persistentID, textmenuroot.GetText(localizationService.CurrentLanguage));
+                var textmenuroot = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "menuroot", player.PlayerName);
+                var textallowedpickups = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "pickupperm", player.PlayerName + " toggle pickup permission");
+                var textallowedshare = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "shareperm", player.PlayerName + " toggle share permission");
+                var textstopcommand = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "stopcommand", player.PlayerName + " stop what you are doing");
+                var textattack = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "attack", player.PlayerName + " attack my target");
+                var textpickup = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "pickup", player.PlayerName + " pickup resource under my aim");
+                var textsupply = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "supply", player.PlayerName + " supply resource (aimed or me)");
+                var textsentry = ZombieController.GetOrCreateTextBlock(
+                    localizationService, player.PlayerName + "sentry", player.PlayerName + " toggle sentry mode");
 
-                var textallowedpickups = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "pickupperm", English = player.PlayerName + " toggle pickup permission" });
-                localizationService.m_texts.Add(textallowedpickups.persistentID, textallowedpickups.GetText(localizationService.CurrentLanguage));
-
-                var textallowedshare = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "shareperm", English = player.PlayerName + " toggle share permission" });
-                localizationService.m_texts.Add(textallowedshare.persistentID, textallowedshare.GetText(localizationService.CurrentLanguage));
-
-                var textstopcommand = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "stopcommand", English = player.PlayerName + " stop what you are doing" });
-                localizationService.m_texts.Add(textstopcommand.persistentID, textstopcommand.GetText(localizationService.CurrentLanguage));
-
-                var textattack = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "attack", English = player.PlayerName + " attack my target" });
-                localizationService.m_texts.Add(textattack.persistentID, textattack.GetText(localizationService.CurrentLanguage));
-
-                var textpickup = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "pickup", English = player.PlayerName + " pickup resource under my aim" });
-                localizationService.m_texts.Add(textpickup.persistentID, textpickup.GetText(localizationService.CurrentLanguage));
-
-                var textsupply = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "supply", English = player.PlayerName + " supply resource (aimed or me)" });
-                localizationService.m_texts.Add(textsupply.persistentID, textsupply.GetText(localizationService.CurrentLanguage));
-
-                var textsentry = TextDataBlock.AddBlock(new() { persistentID = 0, internalEnabled = true, SkipLocalization = true, name = player.PlayerName + "sentry", English = player.PlayerName + " toggle sentry mode" });
-                localizationService.m_texts.Add(textsentry.persistentID, textsentry.GetText(localizationService.CurrentLanguage));
-
-                var menu = new CommunicationNode(textmenuroot.persistentID, CommunicationNode.ScriptType.None);
-                menu.IsLastNode = false;
+                var menu = new CommunicationNode(textmenuroot.persistentID, CommunicationNode.ScriptType.None)
+                {
+                    IsLastNode = false
+                };
                 menu.m_ChildNodes.Add(new CommunicationNode(textallowedpickups.persistentID, CommunicationNode.ScriptType.None));
                 menu.m_ChildNodes.Add(new CommunicationNode(textallowedshare.persistentID, CommunicationNode.ScriptType.None));
                 menu.m_ChildNodes.Add(new CommunicationNode(textstopcommand.persistentID, CommunicationNode.ScriptType.None));
@@ -100,18 +95,23 @@ namespace Zombified_Initiative
                 return;
             }
 
-            if (!ZombifiedInitiative.BotTable.ContainsKey(player.PlayerName))
-                ZombifiedInitiative.BotTable.Add(player.PlayerName, bot);
+            ZombifiedInitiative.BotTable[player.PlayerName] = bot;
 
             started = true;
         }
 
         public void OnDestroy()
         {
-            if (myself != null)
-                ZombifiedInitiative.BotTable.Remove(myself.PlayerName);
+            var replacedByAnotherBot = false;
+            if (myself != null && myAI != null &&
+                ZombifiedInitiative.BotTable.TryGetValue(myself.PlayerName, out var registeredBot))
+            {
+                replacedByAnotherBot = registeredBot != myAI;
+                if (!replacedByAnotherBot)
+                    ZombifiedInitiative.BotTable.Remove(myself.PlayerName);
+            }
 
-            if (mymenu != null)
+            if (!replacedByAnotherBot && mymenu != null)
                 mymenu.IsLastNode = true;
         }
 
@@ -122,34 +122,27 @@ namespace Zombified_Initiative
             var botMenu = mymenu;
             if (!started || player == null || bot == null || botMenu == null) return;
 
-            var communicationMenu = ZombifiedInitiative._menu;
-            if (!menusetup && ZombifiedInitiative.rootmenusetup && communicationMenu != null)
+            var zombifiedMenu = ZombieController.ZombifiedMenu;
+            if (!menusetup && ZombifiedInitiative.rootmenusetup && zombifiedMenu != null)
             {
-                int menunumber = 0;
-                bool flag = false;
-                var childNodes = communicationMenu.m_menu.CurrentNode.ChildNodes[5].m_ChildNodes;
-                // get index of zombified
-                for (int num = 0; num < childNodes.Count; num++)
-                    if (TextDataBlock.GetBlock(childNodes[num].TextId).English == "Zombified Initiative")
-                        menunumber = num;
-
-                // not readding bot if its already somehow in
-                var zombifiedMenu = childNodes[menunumber];
                 for (int num = 0; num < zombifiedMenu.m_ChildNodes.Count; num++)
-                    if (TextDataBlock.GetBlock(zombifiedMenu.m_ChildNodes[num].TextId).English == player.PlayerName)
+                {
+                    var existingMenu = zombifiedMenu.m_ChildNodes[num];
+                    if (existingMenu.TextId == botMenu.TextId)
                     {
-                        flag = true;
-                        zombifiedMenu.m_ChildNodes[num].IsLastNode = false;
+                        existingMenu.IsLastNode = false;
+                        mymenu = existingMenu;
+                        menusetup = true;
+                        break;
                     }
+                }
 
-                if (!flag)
+                if (!menusetup)
                 {
                     zombifiedMenu.m_ChildNodes.Add(botMenu);
-                    for (int num = 0; num < zombifiedMenu.m_ChildNodes.Count; num++)
-                        if (TextDataBlock.GetBlock(zombifiedMenu.m_ChildNodes[num].TextId).English == player.PlayerName)
-                            zombifiedMenu.m_ChildNodes[num].IsLastNode = false;
+                    botMenu.IsLastNode = false;
+                    menusetup = true;
                 }
-                menusetup = true;
             }
 
             if (!SNet.IsMaster) return;
