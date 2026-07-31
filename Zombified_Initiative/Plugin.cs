@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using GTFO.API;
@@ -13,6 +14,9 @@ namespace Zombified_Initiative;
 [BepInPlugin("com.hirnukuono.zombified_initiative", "Zombified Initiative", "0.9.6")]
 public class ZombifiedInitiative : BasePlugin
 {
+    private const string ConfigFileName = "Zombified_Initiative.cfg";
+    private ConfigFile _pluginConfig = null!;
+
     public static Dictionary<String, PlayerAIBot> BotTable = new();
 
     public static PUI_CommunicationMenu _menu;
@@ -66,13 +70,18 @@ public class ZombifiedInitiative : BasePlugin
 
     public override void Load()
     {
+        L = Log;
+        _pluginConfig = new ConfigFile(
+            Path.Combine(Paths.ConfigPath, ConfigFileName),
+            true,
+            MetadataHelper.GetMetadata(this));
+        ZombieController.BindConfig(_pluginConfig);
         Harmony m_Harmony = new Harmony("ZombieController");
         m_Harmony.PatchAll();
         ClassInjector.RegisterTypeInIl2Cpp<ZombieComp>();
-        var ZombieController = AddComponent<ZombieController>();
+        var zombieController = AddComponent<ZombieController>();
         NetworkAPI.RegisterEvent<ZINetInfo>(ZINetInfo.NetworkIdentity, ZombieController.ReceiveZINetInfo);
-        LG_Factory.add_OnFactoryBuildDone((Action)ZombieController.OnFactoryBuildDone);
-        EventAPI.OnExpeditionStarted += ZombieController.Initialize;
-        L = Log;
+        LG_Factory.add_OnFactoryBuildDone((Action)zombieController.OnFactoryBuildDone);
+        EventAPI.OnExpeditionStarted += zombieController.Initialize;
     }
 } // plugin

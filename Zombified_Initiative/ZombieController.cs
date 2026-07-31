@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Agents;
+using BepInEx.Configuration;
 using Enemies;
 using GameData;
 using Gear;
@@ -27,6 +28,100 @@ namespace Zombified_Initiative
         public static bool _preventManual = false;
         public static bool _debug = true;
         public static bool _menuadded = false;
+
+        private static InputBinding _toggleDebug = null!;
+        private static InputBinding _toggleAllPickups = null!;
+        private static InputBinding _toggleAllUses = null!;
+        private static InputBinding _selectDauda = null!;
+        private static InputBinding _selectHackett = null!;
+        private static InputBinding _selectBishop = null!;
+        private static InputBinding _selectWoods = null!;
+        private static InputBinding _attackCommand = null!;
+        private static InputBinding _pickupCommand = null!;
+        private static InputBinding _shareCommand = null!;
+
+        public static void BindConfig(ConfigFile config)
+        {
+            _toggleDebug = BindInput(config, "ToggleDebugLogging", KeyCode.L, MouseButton.None,
+                "Toggle debug logging.");
+            _toggleAllPickups = BindInput(config, "ToggleAutomaticPickups", KeyCode.J, MouseButton.None,
+                "Toggle automatic resource pickups for all bots.");
+            _toggleAllUses = BindInput(config, "ToggleAutomaticResourceSharing", KeyCode.K, MouseButton.None,
+                "Toggle automatic resource use and sharing for all bots.");
+            _selectDauda = BindInput(config, "SelectDauda", KeyCode.Alpha8, MouseButton.None,
+                "Hold to command Dauda.");
+            _selectHackett = BindInput(config, "SelectHackett", KeyCode.Alpha9, MouseButton.None,
+                "Hold to command Hackett.");
+            _selectBishop = BindInput(config, "SelectBishop", KeyCode.Alpha0, MouseButton.None,
+                "Hold to command Bishop.");
+            _selectWoods = BindInput(config, "SelectWoods", KeyCode.F6, MouseButton.None,
+                "Hold to command Woods.");
+            _attackCommand = BindInput(config, "AttackAimedEnemy", KeyCode.None, MouseButton.Middle,
+                "While holding a bot selector, attack the enemy under the crosshair.");
+            _pickupCommand = BindInput(config, "PickUpAimedResource", KeyCode.U, MouseButton.Forward,
+                "While holding a bot selector, pick up the resource under the crosshair.");
+            _shareCommand = BindInput(config, "ShareResourceWithAimedPlayer", KeyCode.I, MouseButton.Back,
+                "While holding a bot selector, share resources with the aimed player, or with you when no player is aimed at.");
+
+            config.Save();
+        }
+
+        private static InputBinding BindInput(
+            ConfigFile config,
+            string name,
+            KeyCode defaultKey,
+            MouseButton defaultMouseButton,
+            string description)
+        {
+            var key = config.Bind(
+                "Keyboard",
+                name,
+                defaultKey,
+                $"{description} Set this to None to disable the keyboard binding.");
+            var mouseButton = config.Bind(
+                "Mouse",
+                name,
+                defaultMouseButton,
+                $"{description} Set this to None to disable the mouse binding.");
+
+            return new InputBinding(key, mouseButton);
+        }
+
+        private enum MouseButton
+        {
+            None = -1,
+            Left = 0,
+            Right = 1,
+            Middle = 2,
+            Back = 3,
+            Forward = 4,
+            Extra5 = 5,
+            Extra6 = 6,
+        }
+
+        private sealed class InputBinding
+        {
+            private readonly ConfigEntry<KeyCode> _key;
+            private readonly ConfigEntry<MouseButton> _mouseButton;
+
+            public InputBinding(ConfigEntry<KeyCode> key, ConfigEntry<MouseButton> mouseButton)
+            {
+                _key = key;
+                _mouseButton = mouseButton;
+            }
+
+            public bool GetDown()
+            {
+                return (_key.Value != KeyCode.None && Input.GetKeyDown(_key.Value)) ||
+                    (_mouseButton.Value != MouseButton.None && Input.GetMouseButtonDown((int)_mouseButton.Value));
+            }
+
+            public bool GetHeld()
+            {
+                return (_key.Value != KeyCode.None && Input.GetKey(_key.Value)) ||
+                    (_mouseButton.Value != MouseButton.None && Input.GetMouseButton((int)_mouseButton.Value));
+            }
+        }
 
 
         public static void ReceiveZINetInfo(ulong sender, ZombifiedInitiative.ZINetInfo netInfo)
@@ -219,42 +314,41 @@ namespace Zombified_Initiative
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.L) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (!CanHandleInput())
+                return;
+
+            if (_toggleDebug.GetDown())
                 SwitchDebug();
 
-            //if (Input.GetKeyDown(KeyCode.P))
-            /// bot under aim, stop? no aim? all stop?
-            //  PreventManualActions();
-
-            if (Input.GetKeyDown(KeyCode.J) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_toggleAllPickups.GetDown())
             {
                 if (SNet.IsMaster) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedpickups = !bt.Value.GetComponent<ZombieComp>().allowedpickups;
                 if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(2, 8, 0, 0, 0));
                 Print("Automatic resource pickups toggled for all bots");
             }
 
-            if (Input.GetKeyDown(KeyCode.K) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_toggleAllUses.GetDown())
             {
                 if (SNet.IsMaster) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedshare = !bt.Value.GetComponent<ZombieComp>().allowedshare;
                 if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(1, 8, 0, 0, 0));
                 Print("Automatic resource uses toggled for all bots");
             }
 
-            if (Input.GetKey(KeyCode.Alpha8) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_selectDauda.GetHeld())
                 SendBot("Dauda");
 
-            if (Input.GetKey(KeyCode.Alpha9) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_selectHackett.GetHeld())
                 SendBot("Hackett");
 
-            if (Input.GetKey(KeyCode.Alpha0) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_selectBishop.GetHeld())
                 SendBot("Bishop");
 
-            if (Input.GetKey(KeyCode.F6) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+            if (_selectWoods.GetHeld())
                 SendBot("Woods");
 
             void SendBot(String bot)
             {
-                if (Input.GetMouseButtonDown(2))
+                if (_attackCommand.GetDown())
                 {
                     var monster = GetMonsterUnderPlayerAim();
                     if (monster != null)
@@ -266,16 +360,22 @@ namespace Zombified_Initiative
                     }
                 }
 
-                if (Input.GetKeyDown(KeyCode.U) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                if (_pickupCommand.GetDown())
                 {
                     var item = GetItemUnderPlayerAim();
                     if (item != null)
                         SendBotToPickupItem(bot, item);
                 }
 
-                if (Input.GetKeyDown(KeyCode.I) && (FocusStateManager.CurrentState == eFocusState.FPS || FocusStateManager.CurrentState == eFocusState.Dead))
+                if (_shareCommand.GetDown())
                     SendBotToShareResourcePack(bot, GetHumanUnderPlayerAim());
             }
+        }
+
+        private static bool CanHandleInput()
+        {
+            return FocusStateManager.CurrentState == eFocusState.FPS ||
+                   FocusStateManager.CurrentState == eFocusState.Dead;
         }
 
         public static void AddZombifiedMenu()
