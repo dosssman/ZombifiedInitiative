@@ -67,7 +67,7 @@ Open this repository as a solution.
 Make the relevant changes then `Build` the solution.
 The compiled plugin will be: `Zombified_Initiative\obj\x64\Release\Zombified_Initiative.dll`.
 
-### Linux 
+### Linux
 
 This is mainly based on the Arch Linux distribution, so adjust it to match yours.
 
