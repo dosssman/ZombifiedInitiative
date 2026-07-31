@@ -19,10 +19,10 @@ public class ZombifiedInitiative : BasePlugin
 
     public static Dictionary<String, PlayerAIBot> BotTable = new();
 
-    public static PUI_CommunicationMenu _menu;
+    public static PUI_CommunicationMenu? _menu;
     public static bool rootmenusetup = false;
 
-    public static ManualLogSource L;
+    public static ManualLogSource L { get; private set; } = null!;
     public static float _manualActionsHaste = 1f;
 
     public struct ZINetInfo

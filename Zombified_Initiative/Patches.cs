@@ -43,8 +43,10 @@ public class ZombifiedPatches
 
     public static void PlayConfirmSound(CommunicationMenu __instance)
     {
-        ZombieComp whocomp = null;
-        CommunicationNode node = ZombifiedInitiative._menu.m_menu.CurrentNode;
+        var communicationMenu = ZombifiedInitiative._menu;
+        if (communicationMenu == null) return;
+
+        CommunicationNode node = communicationMenu.m_menu.CurrentNode;
         if (node.IsLastNode)
         {
             String jee = TextDataBlock.GetBlock(node.TextId).English;
@@ -87,9 +89,11 @@ public class ZombifiedPatches
                         if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(2, bt.Value.m_playerAgent.PlayerSlotIndex, 0, 0, 0));
                         if (SNet.IsMaster)
                         {
-                            whocomp = bt.Value.GetComponent<ZombieComp>();
-                            if (whocomp.pickupaction != null) whocomp.pickupaction.DescBase.SetCompletionStatus(PlayerBotActionBase.Descriptor.StatusType.Failed);
-                            whocomp.allowedpickups = !whocomp.allowedpickups;
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp == null) continue;
+
+                            if (zombieComp.pickupaction != null) zombieComp.pickupaction.DescBase.SetCompletionStatus(PlayerBotActionBase.Descriptor.StatusType.Failed);
+                            zombieComp.allowedpickups = !zombieComp.allowedpickups;
                         }
                     }
                 }
@@ -105,9 +109,11 @@ public class ZombifiedPatches
                         if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(1, bt.Value.m_playerAgent.PlayerSlotIndex, 0, 0, 0));
                         if (SNet.IsMaster)
                         {
-                            whocomp = bt.Value.GetComponent<ZombieComp>();
-                            if (whocomp.shareaction != null) whocomp.shareaction.DescBase.SetCompletionStatus(PlayerBotActionBase.Descriptor.StatusType.Failed);
-                            whocomp.allowedshare = !whocomp.allowedshare;
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp == null) continue;
+
+                            if (zombieComp.shareaction != null) zombieComp.shareaction.DescBase.SetCompletionStatus(PlayerBotActionBase.Descriptor.StatusType.Failed);
+                            zombieComp.allowedshare = !zombieComp.allowedshare;
                         }
                     }
                 }
@@ -123,8 +129,10 @@ public class ZombifiedPatches
                         if (!SNet.IsMaster) NetworkAPI.InvokeEvent<ZombifiedInitiative.ZINetInfo>("ZINetInfo", new ZombifiedInitiative.ZINetInfo(5, bt.Value.m_playerAgent.PlayerSlotIndex, 0, 0, 0));
                         if (SNet.IsMaster)
                         {
-                            whocomp = bt.Value.GetComponent<ZombieComp>();
-                            whocomp.PreventManualActions();
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp == null) continue;
+
+                            zombieComp.PreventManualActions();
                         }
                     }
                 }
@@ -150,21 +158,29 @@ public class ZombifiedPatches
                 {
                     L.LogInfo("all bots sentry mode");
                     foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
-                    {
-                        bt.Value.GetComponent<ZombieComp>().allowedmove = !bt.Value.GetComponent<ZombieComp>().allowedmove;
-                        if (bt.Value.GetComponent<ZombieComp>().allowedmove == true) bt.Value.GetComponent<ZombieComp>().followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
-                        if (bt.Value.GetComponent<ZombieComp>().allowedmove == true) bt.Value.GetComponent<ZombieComp>().travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
-
-                    }
+                        ToggleSentryMode(bt.Value);
                 }
                 else
                 {
                     L.LogInfo($"bot " + who + " sentry mode");
-                    BotTable[who].GetComponent<ZombieComp>().allowedmove = !BotTable[who].GetComponent<ZombieComp>().allowedmove;
-                    if (BotTable[who].GetComponent<ZombieComp>().allowedmove == true) BotTable[who].GetComponent<ZombieComp>().followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
-                    if (BotTable[who].GetComponent<ZombieComp>().allowedmove == true) BotTable[who].GetComponent<ZombieComp>().travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+                    if (BotTable.TryGetValue(who, out var bot))
+                        ToggleSentryMode(bot);
                 }
             }
         } // if islastnode
     } // playconfirm
+
+    private static void ToggleSentryMode(PlayerAIBot bot)
+    {
+        var zombieComp = bot.GetComponent<ZombieComp>();
+        if (zombieComp == null) return;
+
+        zombieComp.allowedmove = !zombieComp.allowedmove;
+        if (!zombieComp.allowedmove) return;
+
+        if (zombieComp.followaction != null)
+            zombieComp.followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+        if (zombieComp.travelaction != null)
+            zombieComp.travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+    }
 } // zombifiedpatches

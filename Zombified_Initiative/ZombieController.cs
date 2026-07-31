@@ -17,9 +17,6 @@ namespace Zombified_Initiative
     public class ZombieController : MonoBehaviour
     {
 
-        // private CustomMenu _customMenu;
-        public static CommunicationNode zombmenu;
-
         public static int _highlightedMenuButtonIndex = 0;
         public static float _manualActionsPriority = 5f;
         public static float _manualActionsHaste = 1f;
@@ -133,24 +130,23 @@ namespace Zombified_Initiative
             // funktio sharepack 4
             // funktio cancel 5
 
-            EnemyAgent? enemy = null;
             ItemInLevel? item = null;
             int itemtype = 0;
             int itemserial = 0;
+            Agent? agent = null;
+            PlayerAIBot? bot = null;
             ZombieComp? zbot = null;
-            String botname = "";
             // if we get data from host or client, we do it here
             Debug.Log($"received data from sender " + sender + ": func:" + netInfo.FUNC + " slot:" + netInfo.SLOT + " itemtype:" + netInfo.ITEMTYPE + " itemserial:" + netInfo.ITEMSERIAL + " enemyid:" + netInfo.AGENTID); // debug poista
             if (!SNet.IsMaster) return;
-            int senderindex = 9;
+            int senderindex = -1;
             for (int i = 0; i < PlayerManager.PlayerAgentsInLevel.Count; i++)
             {
                 var tempplr = PlayerManager.PlayerAgentsInLevel[i];
                 if (sender == tempplr.m_replicator.OwningPlayer.Lookup) senderindex = i;
             }
 
-            if (senderindex == 9) return;
-            Agent agent = null;
+            if (senderindex < 0) return;
             PlayerAgent senderplr = PlayerManager.PlayerAgentsInLevel[senderindex];
             ZombifiedInitiative.L.LogInfo($"player {senderplr.PlayerName} is sender {senderplr.Sync.Replicator.OwningPlayer.Lookup} in slot {senderplr.PlayerSlotIndex}");
             // get agent by repkey
@@ -160,7 +156,8 @@ namespace Zombified_Initiative
                 pRep.keyPlusOne = (ushort)netInfo.AGENTID;
                 pAgent _agent;
                 _agent.pRep = pRep;
-                _agent.TryGet(out agent);
+                _agent.TryGet(out var resolvedAgent);
+                agent = resolvedAgent;
             }
 
             itemtype = netInfo.ITEMTYPE;
@@ -180,75 +177,122 @@ namespace Zombified_Initiative
             // get bot by slot id
             if (netInfo.SLOT < 8)
             {
-                foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) if (bt.Value.Agent.PlayerSlotIndex == netInfo.SLOT)
+                foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                {
+                    if (bt.Value.Agent.PlayerSlotIndex != netInfo.SLOT) continue;
+
+                    bot = bt.Value;
+                    zbot = bot.GetComponent<ZombieComp>();
+                    break;
+                }
+            }
+
+            switch (netInfo.FUNC)
+            {
+                case 0:
+                    if (agent == null) return;
+
+                    var enemy = agent.TryCast<EnemyAgent>();
+                    if (enemy == null) return;
+
+                    if (netInfo.SLOT == 8)
                     {
-                        zbot = bt.Value.GetComponent<ZombieComp>();
-                        botname = bt.Value.Agent.PlayerName;
+                        foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                            SendBotToKillEnemy(bt.Key, enemy, PlayerBotActionAttack.StanceEnum.All, PlayerBotActionAttack.AttackMeansEnum.All, PlayerBotActionWalk.Descriptor.PostureEnum.Stand);
                     }
-            }
+                    else if (bot != null)
+                    {
+                        SendBotToKillEnemy(bot.Agent.PlayerName, enemy, PlayerBotActionAttack.StanceEnum.All, PlayerBotActionAttack.AttackMeansEnum.All, PlayerBotActionWalk.Descriptor.PostureEnum.Stand);
+                    }
+                    break;
 
-            if (netInfo.FUNC == 0)
-            {
-                enemy = agent.TryCast<EnemyAgent>();
-                if (enemy == null) return;
-                if (netInfo.SLOT == 8) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) SendBotToKillEnemy(bt.Key, enemy, PlayerBotActionAttack.StanceEnum.All, PlayerBotActionAttack.AttackMeansEnum.All, PlayerBotActionWalk.Descriptor.PostureEnum.Stand);
-                if (netInfo.SLOT < 8) SendBotToKillEnemy(botname, enemy, PlayerBotActionAttack.StanceEnum.All, PlayerBotActionAttack.AttackMeansEnum.All, PlayerBotActionWalk.Descriptor.PostureEnum.Stand);
-            }
+                case 1:
+                    if (netInfo.SLOT == 8)
+                    {
+                        foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                        {
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp != null)
+                                zombieComp.allowedshare = !zombieComp.allowedshare;
+                        }
+                    }
+                    else if (zbot != null)
+                    {
+                        zbot.allowedshare = !zbot.allowedshare;
+                    }
+                    break;
 
+                case 2:
+                    if (netInfo.SLOT == 8)
+                    {
+                        foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                        {
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp != null)
+                                zombieComp.allowedpickups = !zombieComp.allowedpickups;
+                        }
+                    }
+                    else if (zbot != null)
+                    {
+                        zbot.allowedpickups = !zbot.allowedpickups;
+                    }
+                    break;
 
-            if (netInfo.FUNC == 1)
-            {
-                if (netInfo.SLOT == 8) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedshare = !bt.Value.GetComponent<ZombieComp>().allowedshare;
-                if (netInfo.SLOT < 8) zbot.allowedshare = !zbot.allowedshare;
-            }
-            if (netInfo.FUNC == 2)
-            {
-                if (netInfo.SLOT == 8) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().allowedpickups = !bt.Value.GetComponent<ZombieComp>().allowedpickups;
-                if (netInfo.SLOT < 8) zbot.allowedpickups = !zbot.allowedpickups;
-            }
-            if (netInfo.FUNC == 3)
-            {
-                ExecuteBotAction(zbot.GetComponent<PlayerAIBot>(), new PlayerBotActionCollectItem.Descriptor(zbot.GetComponent<PlayerAIBot>())
-                {
-                    TargetItem = item,
-                    TargetContainer = item.container,
-                    TargetPosition = item.transform.position,
-                    Prio = _manualActionsPriority,
-                    Haste = _manualActionsHaste,
-                },
-    "Added collect item action to " + botname, 4, zbot.GetComponent<PlayerAgent>().PlayerSlotIndex, itemtype, itemserial, 0);
+                case 3:
+                    if (bot == null || item == null) return;
 
-            }
+                    ExecuteBotAction(bot, new PlayerBotActionCollectItem.Descriptor(bot)
+                    {
+                        TargetItem = item,
+                        TargetContainer = item.container,
+                        TargetPosition = item.transform.position,
+                        Prio = _manualActionsPriority,
+                        Haste = _manualActionsHaste,
+                    },
+                        "Added collect item action to " + bot.Agent.PlayerName, 3, bot.m_playerAgent.PlayerSlotIndex, itemtype, itemserial, 0);
+                    break;
 
-            if (netInfo.FUNC == 4)
-            {
-                PlayerAgent human = agent.TryCast<PlayerAgent>();
-                if (human == null) return;
+                case 4:
+                    if (agent == null || bot == null) return;
 
-                BackpackItem backpackItem = null;
-                var gotBackpackItem = zbot.GetComponent<PlayerAIBot>().Backpack.HasBackpackItem(InventorySlot.ResourcePack) &&
-                                      zbot.GetComponent<PlayerAIBot>().Backpack.TryGetBackpackItem(InventorySlot.ResourcePack, out backpackItem);
-                if (!gotBackpackItem)
-                    return;
+                    var human = agent.TryCast<PlayerAgent>();
+                    if (human == null) return;
 
-                var resourcePack = backpackItem.Instance.Cast<ItemEquippable>();
-                zbot.GetComponent<PlayerAIBot>().Inventory.DoEquipItem(resourcePack);
+                    if (!bot.Backpack.HasBackpackItem(InventorySlot.ResourcePack) ||
+                        !bot.Backpack.TryGetBackpackItem(InventorySlot.ResourcePack, out var backpackItem) ||
+                        backpackItem == null)
+                    {
+                        return;
+                    }
 
-                ExecuteBotAction(zbot.GetComponent<PlayerAIBot>(), new PlayerBotActionShareResourcePack.Descriptor(zbot.GetComponent<PlayerAIBot>())
-                {
-                    Receiver = human,
-                    Item = resourcePack,
-                    Prio = _manualActionsPriority,
-                    Haste = _manualActionsHaste,
-                },
-    "Added share resource action to " + zbot.GetComponent<PlayerAIBot>().Agent.PlayerName, 4, zbot.GetComponent<PlayerAIBot>().m_playerAgent.PlayerSlotIndex, 0, 0, human.m_replicator.Key + 1);
-            }
+                    var resourcePack = backpackItem.Instance.Cast<ItemEquippable>();
+                    bot.Inventory.DoEquipItem(resourcePack);
 
+                    ExecuteBotAction(bot, new PlayerBotActionShareResourcePack.Descriptor(bot)
+                    {
+                        Receiver = human,
+                        Item = resourcePack,
+                        Prio = _manualActionsPriority,
+                        Haste = _manualActionsHaste,
+                    },
+                        "Added share resource action to " + bot.Agent.PlayerName, 4, bot.m_playerAgent.PlayerSlotIndex, 0, 0, human.m_replicator.Key + 1);
+                    break;
 
-            if (netInfo.FUNC == 5)
-            {
-                if (netInfo.SLOT == 8) foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable) bt.Value.GetComponent<ZombieComp>().PreventManualActions();
-                if (netInfo.SLOT < 8) zbot.PreventManualActions();
+                case 5:
+                    if (netInfo.SLOT == 8)
+                    {
+                        foreach (KeyValuePair<String, PlayerAIBot> bt in ZombifiedInitiative.BotTable)
+                        {
+                            var zombieComp = bt.Value.GetComponent<ZombieComp>();
+                            if (zombieComp != null)
+                                zombieComp.PreventManualActions();
+                        }
+                    }
+                    else
+                    {
+                        zbot?.PreventManualActions();
+                    }
+                    break;
             }
         }
 
@@ -260,12 +304,27 @@ namespace Zombified_Initiative
         public void OnFactoryBuildDone()
         {
             ZombifiedInitiative.BotTable.Clear();
-            foreach (var p in PlayerManager.PlayerAgentsInLevel) if (p.Owner.IsBot) ZombifiedInitiative.BotTable.Add(p.PlayerName, p.GetComponent<PlayerAIBot>());
-            ZombifiedInitiative._menu = FindObjectOfType<PUI_CommunicationMenu>();
+            foreach (var player in PlayerManager.PlayerAgentsInLevel)
+            {
+                if (!player.Owner.IsBot) continue;
+
+                var bot = player.GetComponent<PlayerAIBot>();
+                if (bot != null)
+                    ZombifiedInitiative.BotTable[player.PlayerName] = bot;
+            }
+
+            var communicationMenu = FindObjectOfType<PUI_CommunicationMenu>();
+            if (communicationMenu == null)
+            {
+                ZombifiedInitiative.L.LogError("Could not find the player communication menu.");
+                return;
+            }
+
+            ZombifiedInitiative._menu = communicationMenu;
             if (!_menuadded)
             {
                 AddZombifiedText();
-                AddZombifiedMenu();
+                AddZombifiedMenu(communicationMenu);
                 ZombifiedInitiative.rootmenusetup = true;
                 _menuadded = true;
             }
@@ -293,6 +352,12 @@ namespace Zombified_Initiative
             TextDataBlock.AddBlock(zombtext7);
 
             var localizationService = Text.TextLocalizationService.TryCast<GameDataTextLocalizationService>();
+            if (localizationService == null)
+            {
+                ZombifiedInitiative.L.LogError("Could not access the game-data localization service.");
+                return;
+            }
+
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext1"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext1"), zombtext1.GetText(localizationService.CurrentLanguage));
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext2"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext2"), zombtext2.GetText(localizationService.CurrentLanguage));
             if (!localizationService.m_texts.ContainsKey(TextDataBlock.GetBlockID("zombtext3"))) localizationService.m_texts.Add(TextDataBlock.GetBlockID("zombtext3"), zombtext3.GetText(localizationService.CurrentLanguage));
@@ -378,7 +443,7 @@ namespace Zombified_Initiative
                    FocusStateManager.CurrentState == eFocusState.Dead;
         }
 
-        public static void AddZombifiedMenu()
+        public static void AddZombifiedMenu(PUI_CommunicationMenu communicationMenu)
         {
             uint zombtb1 = TextDataBlock.GetBlockID("zombtext1");
             uint zombtb2 = TextDataBlock.GetBlockID("zombtext2");
@@ -408,11 +473,11 @@ namespace Zombified_Initiative
             zombmenu.TextId = zombtb1;
             zombmenu.m_ChildNodes.Add(allmenu);
 
-            ZombifiedInitiative._menu.m_menu.CurrentNode.ChildNodes[5].m_ChildNodes.Add(zombmenu);
+            communicationMenu.m_menu.CurrentNode.ChildNodes[5].m_ChildNodes.Add(zombmenu);
         }
 
         #region Attack monster
-        public static EnemyAgent GetMonsterUnderPlayerAim()
+        public static EnemyAgent? GetMonsterUnderPlayerAim()
         {
             return GetComponentUnderPlayerAim<EnemyAgent>
                 (enemy => "Found monster: " + enemy.EnemyData.name, false);
@@ -424,8 +489,7 @@ namespace Zombified_Initiative
             PlayerBotActionAttack.AttackMeansEnum means,
             PlayerBotActionWalk.Descriptor.PostureEnum posture)
         {
-            var bot = ZombifiedInitiative.BotTable[chosenBot];
-            if (bot == null)
+            if (!ZombifiedInitiative.BotTable.TryGetValue(chosenBot, out var bot))
                 return;
 
             ExecuteBotAction(bot, new PlayerBotActionAttack.Descriptor(bot)
@@ -443,7 +507,7 @@ namespace Zombified_Initiative
 
 
         #region Item pickup
-        public static ItemInLevel GetItemUnderPlayerAim()
+        public static ItemInLevel? GetItemUnderPlayerAim()
         {
             return GetComponentUnderPlayerAim<ItemInLevel>
                 (item => "Found item: " + item.PublicName);
@@ -454,8 +518,7 @@ namespace Zombified_Initiative
         {
             int itemtype = 0;
             int itemserial = 0;
-            var bot = ZombifiedInitiative.BotTable[chosenBot];
-            if (bot == null)
+            if (!ZombifiedInitiative.BotTable.TryGetValue(chosenBot, out var bot))
                 return;
 
             var res = item.TryCast<ResourcePackPickup>();
@@ -499,15 +562,15 @@ namespace Zombified_Initiative
 
         public static void SendBotToShareResourcePack(String chosenBot, PlayerAgent human)
         {
-            var bot = ZombifiedInitiative.BotTable[chosenBot];
-            if (bot == null)
+            if (!ZombifiedInitiative.BotTable.TryGetValue(chosenBot, out var bot))
                 return;
 
-            BackpackItem backpackItem = null;
-            var gotBackpackItem = bot.Backpack.HasBackpackItem(InventorySlot.ResourcePack) &&
-                                  bot.Backpack.TryGetBackpackItem(InventorySlot.ResourcePack, out backpackItem);
-            if (!gotBackpackItem)
+            if (!bot.Backpack.HasBackpackItem(InventorySlot.ResourcePack) ||
+                !bot.Backpack.TryGetBackpackItem(InventorySlot.ResourcePack, out var backpackItem) ||
+                backpackItem == null)
+            {
                 return;
+            }
 
             var resourcePack = backpackItem.Instance.Cast<ItemEquippable>();
             bot.Inventory.DoEquipItem(resourcePack);
@@ -537,7 +600,7 @@ namespace Zombified_Initiative
         }
 
 
-        public static T GetComponentUnderPlayerAim<T>(System.Func<T, string> message, bool raycastAll = true) where T : class
+        public static T? GetComponentUnderPlayerAim<T>(System.Func<T, string> message, bool raycastAll = true) where T : class
         {
             if (raycastAll)
             {
