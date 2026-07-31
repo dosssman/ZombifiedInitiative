@@ -21,8 +21,6 @@ namespace Zombified_Initiative
 
         public PlayerBotActionBase? pickupaction;
         public PlayerBotActionBase? shareaction;
-        public PlayerBotActionBase? followaction;
-        public PlayerBotActionBase? travelaction;
 
 
         public void Initialize()
@@ -150,13 +148,6 @@ namespace Zombified_Initiative
             actionsToRemove.Clear();
             foreach (var action in bot.Actions)
             {
-                // sentry?
-                if (action.GetIl2CppType().Name == "PlayerBotActionFollow") followaction = action;
-                if (action.GetIl2CppType().Name == "PlayerBotActionTravel") travelaction = action;
-
-                if (!allowedmove && action.GetIl2CppType().Name == "PlayerBotActionFollow") action.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.Queued;
-                if (!allowedmove && action.GetIl2CppType().Name == "PlayerBotActionTravel") action.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.Queued;
-
                 // pickups?
                 if (!allowedpickups && action.GetIl2CppType().Name == "PlayerBotActionCollectItem")
                 {

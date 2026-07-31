@@ -176,11 +176,103 @@ public class ZombifiedPatches
         if (zombieComp == null) return;
 
         zombieComp.allowedmove = !zombieComp.allowedmove;
-        if (!zombieComp.allowedmove) return;
+        L.LogInfo($"{bot.Agent.PlayerName} sentry mode {(!zombieComp.allowedmove ? "enabled" : "disabled")}");
+    }
 
-        if (zombieComp.followaction != null)
-            zombieComp.followaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
-        if (zombieComp.travelaction != null)
-            zombieComp.travelaction.DescBase.Status = PlayerBotActionBase.Descriptor.StatusType.None;
+    private static bool IsSentryMode(PlayerBotActionBase action)
+    {
+        var agent = action.m_agent;
+        if (agent == null) return false;
+
+        var zombieComp = agent.GetComponent<ZombieComp>();
+        return zombieComp != null && !zombieComp.allowedmove;
+    }
+
+    // Do not offer the root follow action while the bot is guarding a position.
+    // Skipping the candidate lets the bot scheduler stop an active follow action
+    // normally instead of leaving its descriptor in an invalid state.
+    [HarmonyPatch(typeof(RootPlayerBotAction), nameof(RootPlayerBotAction.UpdateActionFollowPlayer))]
+    [HarmonyPrefix]
+    private static bool UpdateActionFollowPlayerPrefix(RootPlayerBotAction __instance)
+    {
+        return !IsSentryMode(__instance);
+    }
+
+    // Attack owns a travel child of its own. Use the movement switch provided by
+    // the attack descriptor so equipping, reloading, and firing remain available.
+    [HarmonyPatch(typeof(RootPlayerBotAction), nameof(RootPlayerBotAction.UpdateActionAttack))]
+    [HarmonyPostfix]
+    private static void UpdateActionAttackPostfix(RootPlayerBotAction __instance)
+    {
+        if (!IsSentryMode(__instance) || __instance.m_attackAction == null) return;
+
+        __instance.m_attackAction.MovementAllowed = false;
+    }
+
+    // A biotracker has no ammunition. In sentry mode it should scan from the
+    // guarded position instead of starting its PlayerBotActionTravel child.
+    [HarmonyPatch(typeof(PlayerBotActionUseEnemyScanner), nameof(PlayerBotActionUseEnemyScanner.VerifyCurrentPosition))]
+    [HarmonyPostfix]
+    private static void VerifyEnemyScannerPositionPostfix(
+        PlayerBotActionUseEnemyScanner __instance,
+        ref bool __result)
+    {
+        if (!__result && IsSentryMode(__instance))
+            __result = true;
+    }
+
+    // Validate the firearm selected by the vanilla/BetterBots attack chooser.
+    // This is deliberately limited to the standard and special slots: class/tool
+    // ammo (including sentries) is independent, and the biotracker uses no ammo.
+    [HarmonyPatch(typeof(PlayerBotActionAttack), nameof(PlayerBotActionAttack.ChooseAttackOption))]
+    [HarmonyPostfix]
+    [HarmonyAfter("com.east.bb")]
+    private static void ChooseAttackOptionPostfix(PlayerBotActionAttack __instance, bool __result)
+    {
+        if (!__result || !IsSentryMode(__instance)) return;
+
+        var attackOption = __instance.m_currentAttackOption;
+        var backpack = __instance.m_backpack;
+        var selectedWeapon = attackOption?.ItemToUse;
+        if (attackOption == null || backpack == null || selectedWeapon == null ||
+            (attackOption.Means & PlayerBotActionAttack.AttackMeansEnum.Bullet) == 0)
+        {
+            return;
+        }
+
+        var selectedSlot = backpack.GetBackpackSlot(selectedWeapon);
+        if (selectedSlot != InventorySlot.GearStandard && selectedSlot != InventorySlot.GearSpecial)
+            return;
+
+        if (PlayerBotActionAttack.HasAmmo(backpack, selectedSlot)) return;
+
+        var fallbackSlot = selectedSlot == InventorySlot.GearStandard
+            ? InventorySlot.GearSpecial
+            : InventorySlot.GearStandard;
+        if (!TryGetUsableFirearm(backpack, fallbackSlot, out var fallbackWeapon))
+            return;
+
+        attackOption.ItemToUse = fallbackWeapon;
+        L.LogInfo($"{__instance.m_agent.PlayerName} switched from empty {selectedSlot} to {fallbackSlot}");
+    }
+
+    private static bool TryGetUsableFirearm(
+        PlayerBackpack backpack,
+        InventorySlot slot,
+        out ItemEquippable? weapon)
+    {
+        weapon = null;
+        if (!PlayerBotActionAttack.HasAmmo(backpack, slot) ||
+            !backpack.TryGetBackpackItem(slot, out var backpackItem) ||
+            backpackItem is null)
+        {
+            return false;
+        }
+
+        var itemInstance = backpackItem.Instance;
+        if (itemInstance is null) return false;
+
+        weapon = itemInstance.TryCast<ItemEquippable>();
+        return weapon != null;
     }
 } // zombifiedpatches
