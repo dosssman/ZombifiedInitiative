@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.8
+- Fixed issue where locking bot slots in the lobby before the mission starts would make Zombified Initiative broken. (introduced in v0.9.5)
+- Improved bot registration and communication-menu cleanup when bots leave, rejoin, or are replaced.
+- [Codebase] Refactored bot and menu handling, added null-safety checks, and resolved compilation warnings.
+
 ## 0.9.7
 
 - Added configurable keyboard and mouse bindings through the standard BepInEx configuration system.
